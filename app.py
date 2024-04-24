@@ -39,19 +39,19 @@ def sql_connect():
 	)
 	cursor = cnx.cursor()
 
-def sql_getDHTdata():
+def sql_getDHTdata(display_hour):
 	global cnx, cursor
 	ret_datetime = []
 	ret_temp = []
 	ret_humid = []
 	
 	sql = (
-		'''
+		f'''
 		SELECT DATE_ADD(date, INTERVAL time HOUR_SECOND), temp, humid
 		    FROM dht11 
 			WHERE
 			DATE_ADD(date, INTERVAL time HOUR_SECOND)
-			>= DATE_SUB(NOW(),INTERVAL 24 HOUR)
+			>= DATE_SUB(NOW(),INTERVAL {display_hour} HOUR)
 		'''
 	)
 	
@@ -87,16 +87,20 @@ def makeGraph_th(datetime, temp, humid):
 	ax2.set_ylabel("HUMID[%]")
 	plt.savefig("static/graph_th.png", format="png", dpi=300)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+	display_hour = 24
+	if request.method == 'POST':
+		display_hour = request.form['display_hour']
 	sql_connect()
-	ContentsData = sql_getDHTdata()
+	ContentsData = sql_getDHTdata(display_hour)
 	makeGraph_th(ContentsData["datetime"], ContentsData["temp"], ContentsData["humid"])
 	sql_disconnect()
 	return render_template('index.html',
                             datetime=ContentsData['datetime'][-1],
                             temperature=ContentsData['temp'][-1],
                             humidity=ContentsData['humid'][-1],
+							display_hour=display_hour
                            )
 
 if __name__ == '__main__':
